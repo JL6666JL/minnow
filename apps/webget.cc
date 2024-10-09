@@ -6,7 +6,6 @@
 #include <string>
 
 using namespace std;
-## sdsdasdada
 
 void get_URL( const string& host, const string& path )
 {

@@ -2,10 +2,6 @@
 
 #include "byte_stream.hh"
 
-#include <cstdint>
-#include <map>
-#include <optional>
-
 class Reassembler
 {
 public:
@@ -46,9 +42,4 @@ public:
 
 private:
   ByteStream output_; // the Reassembler writes to this ByteStream
-
-  std::map<uint64_t, std::string> databuf {}; // 存储还没有写入的数据段
-  std::optional<uint64_t> end_pos {};         // 存储流的结束位置
-  uint64_t pending_num {};                    // 缓冲中尚未写入的字节数
-  auto split( uint64_t pos );
 };
