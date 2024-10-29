@@ -7,7 +7,7 @@ using namespace std;
 
 void TCPReceiver::receive( TCPSenderMessage message )
 {
-  if ( writer().has_error() ) 
+  if ( writer().has_error() )
     return;
   if ( message.RST ) {
     reader().set_error();

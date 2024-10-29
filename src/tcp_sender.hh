@@ -6,17 +6,68 @@
 
 #include <cstdint>
 #include <functional>
-#include <list>
-#include <memory>
-#include <optional>
 #include <queue>
+
+class RetryTimer
+{
+public:
+  explicit RetryTimer( uint64_t initial_RTO_ms ) : RTO_duration_ms_( initial_RTO_ms ) {}
+
+  bool is_timer_active() const { return timer_active_; }
+
+  bool has_timer_expired() const
+  {
+    if ( !timer_active_ )
+      return false;
+    return timer_elapsed_ms_ >= RTO_duration_ms_;
+  }
+
+  void reset_timer() { timer_elapsed_ms_ = 0; }
+
+  void apply_exponential_backoff() { RTO_duration_ms_ <<= 1; }
+
+  void reload_timer( uint64_t initial_RTO_ms )
+  {
+    RTO_duration_ms_ = initial_RTO_ms;
+    reset_timer();
+  }
+
+  void activate_timer()
+  {
+    if ( !timer_active_ ) {
+      timer_active_ = true;
+      reset_timer();
+    }
+  }
+
+  void deactivate_timer()
+  {
+    if ( timer_active_ ) {
+      timer_active_ = false;
+      reset_timer();
+    }
+  }
+
+  RetryTimer& advance_timer( uint64_t elapsed_ms )
+  {
+    if ( timer_active_ ) {
+      timer_elapsed_ms_ += elapsed_ms;
+    }
+    return *this;
+  }
+
+private:
+  bool timer_active_ {};
+  uint64_t RTO_duration_ms_ {};
+  uint64_t timer_elapsed_ms_ {};
+};
 
 class TCPSender
 {
 public:
   /* Construct TCP sender with given default Retransmission Timeout and possible ISN */
   TCPSender( ByteStream&& input, Wrap32 isn, uint64_t initial_RTO_ms )
-    : input_( std::move( input ) ), isn_( isn ), initial_RTO_ms_( initial_RTO_ms )
+    : input_( std::move( input ) ), isn_( isn ), initial_RTO_ms_( initial_RTO_ms ), retrans_timer_( initial_RTO_ms )
   {}
 
   /* Generate an empty TCPSenderMessage */
@@ -48,4 +99,14 @@ private:
   ByteStream input_;
   Wrap32 isn_;
   uint64_t initial_RTO_ms_;
+  // added variables
+  uint64_t next_seq_number_ {};
+  uint64_t ack_sequence_number_ {};
+  uint16_t window_capacity_ { 1 }; // start from 1
+  std::queue<TCPSenderMessage> pending_messages_ {};
+  uint64_t total_outgoing_seq_ {};
+  uint64_t retrans_count_ {};
+  bool SYN_sent_flag_ {};
+  bool FIN_sent_flag_ {};
+  RetryTimer retrans_timer_;
 };
