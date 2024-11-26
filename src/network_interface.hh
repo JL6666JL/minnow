@@ -1,10 +1,17 @@
 #pragma once
 
-#include <queue>
-
 #include "address.hh"
+#include "arp_message.hh"
 #include "ethernet_frame.hh"
+#include "ethernet_header.hh"
 #include "ipv4_datagram.hh"
+
+#include <cstddef>
+#include <cstdint>
+#include <queue>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 // A "network interface" that connects IP (the internet layer, or network layer)
 // with Ethernet (the network access layer, or link layer).
@@ -81,4 +88,37 @@ private:
 
   // Datagrams that have been received
   std::queue<InternetDatagram> datagrams_received_ {};
+
+  struct TimeoutTracker {
+    size_t _ms;
+
+    TimeoutTracker& tick(const size_t& ms_since_last_tick) {
+        _ms += ms_since_last_tick;
+        return *this;
+    }
+
+    bool expired(const size_t& TTL_ms) const {
+        return _ms >= TTL_ms;
+    }
+  };
+
+  ARPMessage create_arp_message(const uint16_t op_code,
+                                const EthernetAddress& target_mac_address,
+                                const uint32_t target_ipv4_address) const {
+      ARPMessage arp;
+      arp.opcode = op_code;
+      arp.sender_ethernet_address = ethernet_address_;
+      arp.sender_ip_address = ip_address_.ipv4_numeric();
+      arp.target_ethernet_address = target_mac_address;
+      arp.target_ip_address = target_ipv4_address;
+      return arp;
+  }
+
+  typedef decltype(ip_address_.ipv4_numeric()) IPv4NumericAddress;
+  std::unordered_map<IPv4NumericAddress, std::vector<InternetDatagram>> pending_datagrams_ {};
+  std::unordered_map<IPv4NumericAddress, TimeoutTracker> pending_timers_ {};
+  std::unordered_map<IPv4NumericAddress, std::pair<EthernetAddress, TimeoutTracker>> arp_table_ {};
+
+  const size_t ARP_CACHE_ENTRY_LIFETIME = 30000;
+  const size_t ARP_RESPONSE_TTL = 5000;
 };
