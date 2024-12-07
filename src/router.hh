@@ -1,10 +1,18 @@
 #pragma once
 
-#include <memory>
-#include <optional>
-
+#include "address.hh"
 #include "exception.hh"
 #include "network_interface.hh"
+
+#include <array>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
+using namespace std;
 
 // \brief A router that has multiple network interfaces and
 // performs longest-prefix-match routing between them.
@@ -34,5 +42,8 @@ public:
 
 private:
   // The router's collection of network interfaces
-  std::vector<std::shared_ptr<NetworkInterface>> _interfaces {};
+  vector<shared_ptr<NetworkInterface>> _interfaces {};
+
+  using meg = pair<size_t, optional<Address>>;
+  array<unordered_map<uint32_t, meg>, 32> routable {};
 };
